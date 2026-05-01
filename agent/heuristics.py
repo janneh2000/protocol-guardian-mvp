@@ -34,6 +34,9 @@ SUSPICIOUS_SELECTORS: dict[str, str] = {
     "0x40c10f19": "mint",                    # privileged mint — admin-key compromise
     "0x9dc29fac": "burn",                    # privileged burn
     "0x8456cb59": "pause",                   # someone trying to pause us first
+    "0x2e1a7d4d": "withdraw",                # drains the pool
+    "0xd0e30db0": "deposit",                 # high-volume deposit (sandwich setup)
+    "0xc5ebeaec": "borrow",                  # uncollateralised-borrow exploit pattern
 }
 
 # Wei threshold above which raw ETH value alone is enough to escalate.

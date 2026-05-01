@@ -32,6 +32,7 @@ from agent.action import GuardianContract
 from agent.heuristics import is_interesting
 from agent.ingestion import stream_pending
 from agent.report import IncidentReport, report
+import json as _json
 
 logging.basicConfig(
     level=logging.INFO,
@@ -92,6 +93,24 @@ async def run() -> int:
 
     logger.info("Protocol Guardian online — watching %d address(es)", len(watchlist))
 
+    # Publish a small status file so the dashboard's top cards populate
+    # immediately, even before the first classification lands.
+    async def _publish_status():
+        try:
+            paused = await guardian.is_paused()
+        except Exception:
+            paused = False
+        status = {
+            "watchlist_size": len(watchlist),
+            "paused": paused,
+            "guardian_address": contract,
+            "axl_peers": 0,
+        }
+        Path("dashboard").mkdir(exist_ok=True)
+        Path("dashboard/status.json").write_text(_json.dumps(status, indent=2))
+
+    await _publish_status()
+
     async for tx in stream_pending(ws_url, watchlist):
         ok, reason = is_interesting(tx, watchlist)
         if not ok:
@@ -125,6 +144,7 @@ async def run() -> int:
                     logger.warning("pause tx failed: %s", result.get("error"))
 
         await report(incident)
+        await _publish_status()
 
     return 0
 
