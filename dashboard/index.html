@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Protocol Guardian — Live Dashboard</title>
+<meta name="description" content="Live operator dashboard for the Protocol Guardian agent." />
+<link rel="icon" type="image/svg+xml" href="/assets/logo-mono.svg" />
+<style>
+  :root {
+    --bg: #07090f;
+    --bg-soft: #0d1018;
+    --bg-card: #11151f;
+    --line: #1d2333;
+    --line-strong: #2a3145;
+    --text: #e7ecf6;
+    --muted: #8a93a8;
+    --soft: #5b6379;
+    --blue: #6366f1;
+    --blue-soft: #1f2447;
+    --mint: #27d6c4;
+    --amber: #f59e0b;
+    --red: #ef4444;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); }
+  body {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 14px;
+    line-height: 1.55;
+  }
+  header {
+    border-bottom: 1px solid var(--line);
+    padding: 18px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg-soft);
+  }
+  header .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.02em;
+    color: var(--text);
+    text-decoration: none;
+  }
+  header .brand img { width: 22px; height: 22px; }
+  header .brand .tag {
+    color: var(--mint);
+    font-size: 11px;
+    border: 1px solid var(--line-strong);
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-left: 8px;
+    letter-spacing: 0.06em;
+  }
+  header .right { display: flex; align-items: center; gap: 18px; font-size: 12px; }
+  header .right a { color: var(--muted); text-decoration: none; }
+  header .right a:hover { color: var(--text); }
+  .pill { display: inline-flex; align-items: center; gap: 6px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dot.live { background: var(--mint); box-shadow: 0 0 10px var(--mint); animation: pulse 1.6s infinite; }
+  .dot.warn { background: var(--amber); }
+  .dot.crit { background: var(--red); box-shadow: 0 0 10px var(--red); animation: pulse 0.8s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+  main { padding: 28px; max-width: 1480px; margin: 0 auto; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .card .label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .card .value { font-size: 22px; font-weight: 700; color: var(--text); }
+  .card .sub { font-size: 12px; color: var(--soft); margin-top: 4px; }
+
+  section.feed { margin-top: 6px; }
+  section.feed h2 {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    margin: 0 0 12px;
+    font-weight: 600;
+  }
+  .event-list { display: flex; flex-direction: column; gap: 8px; }
+  .event {
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--soft);
+    border-radius: 8px;
+    padding: 12px 16px;
+    display: grid;
+    grid-template-columns: 92px 1fr auto;
+    gap: 16px;
+    align-items: center;
+  }
+  .event.IGNORE { border-left-color: var(--soft); }
+  .event.ALERT  { border-left-color: var(--amber); }
+  .event.PAUSE  { border-left-color: var(--red); }
+  .event .ts { color: var(--muted); font-size: 12px; }
+  .event .body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .event .body .top {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+    color: var(--text);
+  }
+  .event .body .rationale { color: var(--muted); font-size: 13px; }
+  .badge {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--blue-soft);
+    color: var(--text);
+  }
+  .badge.IGNORE { background: rgba(139, 147, 168, 0.15); color: var(--muted); }
+  .badge.ALERT  { background: rgba(245, 158, 11, 0.15); color: var(--amber); }
+  .badge.PAUSE  { background: rgba(239, 68, 68, 0.15); color: var(--red); }
+  .mono { font-family: inherit; color: var(--soft); font-size: 12px; }
+  .conf { color: var(--mint); font-weight: 600; }
+  .empty {
+    border: 1px dashed var(--line-strong);
+    border-radius: 10px;
+    padding: 36px;
+    text-align: center;
+    color: var(--muted);
+  }
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 18px 28px;
+    color: var(--soft);
+    font-size: 12px;
+    text-align: center;
+  }
+  footer a { color: var(--muted); text-decoration: none; }
+  footer a:hover { color: var(--text); }
+</style>
+</head>
+<body>
+<header>
+  <a href="/" class="brand">
+    <img src="/assets/logo-mono.svg" alt="" />
+    Protocol Guardian
+    <span class="tag">SEPOLIA</span>
+  </a>
+  <div class="right">
+    <span class="pill" id="conn-pill"><span class="dot live" id="conn-dot"></span><span id="conn-text">live</span></span>
+    <a href="/team.html">Team</a>
+    <a href="https://github.com/janneh2000/protocol-guardian-mvp" target="_blank" rel="noopener">GitHub</a>
+  </div>
+</header>
+
+<main>
+  <div class="grid">
+    <div class="card">
+      <div class="label">Watchlist</div>
+      <div class="value" id="stat-watch">—</div>
+      <div class="sub" id="stat-watch-sub">addresses monitored</div>
+    </div>
+    <div class="card">
+      <div class="label">Pause status</div>
+      <div class="value" id="stat-pause">—</div>
+      <div class="sub" id="stat-pause-sub">on-chain</div>
+    </div>
+    <div class="card">
+      <div class="label">Classifications</div>
+      <div class="value" id="stat-class">0</div>
+      <div class="sub">since boot</div>
+    </div>
+    <div class="card">
+      <div class="label">Pauses fired</div>
+      <div class="value" id="stat-pauses">0</div>
+      <div class="sub">since boot</div>
+    </div>
+    <div class="card">
+      <div class="label">AXL peers</div>
+      <div class="value" id="stat-peers">—</div>
+      <div class="sub">P2P swarm</div>
+    </div>
+    <div class="card">
+      <div class="label">ENS</div>
+      <div class="value" id="stat-ens">—</div>
+      <div class="sub" id="stat-ens-sub">guardian identity</div>
+    </div>
+  </div>
+
+  <section class="feed">
+    <h2>Live event feed</h2>
+    <div id="events" class="event-list"></div>
+  </section>
+</main>
+
+<footer>
+  <a href="/">Home</a> · <a href="/team.html">Team</a> · <a href="/get-started.html">Get started</a> ·
+  © 2026 Protocol Guardian · Built by
+  <a href="https://github.com/janneh2000" target="_blank" rel="noopener">Rivaldo Janneh</a>
+</footer>
+
+<script src="/dashboard/ens.js"></script>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+
+  // Lightweight live feed: try to read a JSONL file at /dashboard/events.json
+  // (written by the agent's report module) and render the most recent N.
+  // If absent, render the empty state. The agent populates it as it runs.
+  const POLL_MS = 4000;
+  const MAX_EVENTS = 50;
+
+  async function fetchEvents() {
+    try {
+      const r = await fetch("/dashboard/events.json", { cache: "no-store" });
+      if (!r.ok) return [];
+      const text = await r.text();
+      const lines = text.trim().split("\n").filter(Boolean);
+      const out = [];
+      for (const line of lines) {
+        try { out.push(JSON.parse(line)); } catch { /* skip */ }
+      }
+      return out.slice(-MAX_EVENTS).reverse();
+    } catch { return []; }
+  }
+
+  function fmtTs(epoch) {
+    const d = new Date(epoch * 1000);
+    return d.toISOString().slice(11, 19);
+  }
+
+  function shortHex(s, n = 8) {
+    if (!s || typeof s !== "string") return "—";
+    return s.length > n + 4 ? `${s.slice(0, n)}…${s.slice(-4)}` : s;
+  }
+
+  function render(events) {
+    const root = $("events");
+    if (!events.length) {
+      root.innerHTML = '<div class="empty">No events yet. The agent emits one row per classification — start the agent loop to see them flow.</div>';
+      $("stat-class").textContent = "0";
+      $("stat-pauses").textContent = "0";
+      return;
+    }
+    let pauses = 0;
+    const html = events.map(e => {
+      if (e.action === "PAUSE") pauses++;
+      return `
+        <div class="event ${e.action || 'IGNORE'}">
+          <div class="ts">${fmtTs(e.timestamp)}</div>
+          <div class="body">
+            <div class="top">
+              <span class="badge ${e.action}">${e.action}</span>
+              <span class="conf">${e.confidence}%</span>
+              <span class="mono">${shortHex(e.target, 10)}</span>
+              <span class="mono">${e.selector}</span>
+              <span class="mono">tx ${shortHex(e.tx_hash, 8)}</span>
+              ${e.peer_corroboration ? `<span class="mono">+${e.peer_corroboration} peer(s)</span>` : ""}
+            </div>
+            <div class="rationale">${(e.rationale || "").replace(/[<>]/g, "")}</div>
+          </div>
+          <div></div>
+        </div>
+      `;
+    }).join("");
+    root.innerHTML = html;
+    $("stat-class").textContent = events.length;
+    $("stat-pauses").textContent = pauses;
+  }
+
+  async function fetchStatus() {
+    try {
+      const r = await fetch("/dashboard/status.json", { cache: "no-store" });
+      if (!r.ok) return null;
+      return await r.json();
+    } catch { return null; }
+  }
+
+  function applyStatus(s) {
+    if (!s) {
+      $("stat-watch").textContent = "—";
+      $("stat-pause").textContent = "—";
+      $("stat-pause-sub").textContent = "agent offline";
+      $("stat-peers").textContent = "—";
+      $("conn-dot").className = "dot warn";
+      $("conn-text").textContent = "agent offline";
+      return;
+    }
+    $("stat-watch").textContent = (s.watchlist_size ?? "—");
+    $("stat-pause").textContent = s.paused ? "PAUSED" : "live";
+    $("stat-pause-sub").textContent = s.last_pause_reason || "on-chain";
+    $("stat-peers").textContent = (s.axl_peers ?? "—");
+    $("conn-dot").className = s.paused ? "dot crit" : "dot live";
+    $("conn-text").textContent = s.paused ? "paused" : "live";
+  }
+
+  async function tick() {
+    const [events, status] = await Promise.all([fetchEvents(), fetchStatus()]);
+    render(events);
+    applyStatus(status);
+
+    // ENS — uses the dashboard/ens.js viem helper if available.
+    if (window.PGEns && typeof window.PGEns.resolve === "function") {
+      const guardianAddr = (status && status.guardian_address) || null;
+      if (guardianAddr) {
+        try {
+          const name = await window.PGEns.resolve(guardianAddr);
+          $("stat-ens").textContent = name || "—";
+          $("stat-ens-sub").textContent = name ? "ENS resolved" : "no ENS set";
+        } catch { /* ignore */ }
+      }
+    }
+  }
+
+  tick();
+  setInterval(tick, POLL_MS);
+})();
+</script>
+</body>
+</html>

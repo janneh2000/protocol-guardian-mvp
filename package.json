@@ -1,0 +1,21 @@
+{
+  "name": "protocol-guardian",
+  "version": "0.1.0",
+  "description": "Autonomous DeFi security agent — built for ETHGlobal Open Agents 2026",
+  "scripts": {
+    "compile": "hardhat compile",
+    "deploy": "hardhat run scripts/deploy.js --network sepolia",
+    "verify": "python3 scripts/smoke_test.py",
+    "ens:register": "node scripts/register_ens.mjs"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@openzeppelin/contracts": "^5.0.0",
+    "hardhat": "^2.22.0"
+  },
+  "dependencies": {
+    "@keeperhub/wallet": "^0.1.7",
+    "dotenv": "^16.4.0",
+    "viem": "^2.7.0"
+  }
+}
