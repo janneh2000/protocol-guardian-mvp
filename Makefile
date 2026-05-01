@@ -24,5 +24,5 @@ swarm:
 	docker compose -f agent/axl/docker-compose.yml up --build
 
 dashboard:
-	@echo "Serving dashboard at http://localhost:8080"
-	@cd dashboard && python3 -m http.server 8080
+	@echo "Serving dashboard at http://localhost:8080/dashboard/"
+	@python3 -m http.server 8080
