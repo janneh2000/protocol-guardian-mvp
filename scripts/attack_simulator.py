@@ -1,12 +1,10 @@
-"""Attack simulator — fires a suspicious tx at the deployed MockLendingPool
-so we can demo the agent reacting end-to-end.
+"""Attack simulator — fires a clearly-malicious tx at the deployed
+MockLendingPool so we can demo the agent reacting end-to-end.
 
-The "attack" itself is a withdraw() call from a non-depositor. The pool
-will revert it for that reason alone; the point of the demo is that the
-*pending* tx already trips the agent's heuristics + classifier and the
-agent flips the pause flag *before* the tx mines. After that, every
-subsequent legitimate call also reverts (PoolPaused), demonstrating the
-circuit-breaker.
+We use the `mint(address,uint256)` selector (0x40c10f19) — a textbook
+admin-key-compromise pattern. The pool will revert (no such function),
+but the *pending* tx is what the agent reacts to. Claude's system
+prompt explicitly calls this out as a PAUSE-worthy signature.
 
 Usage:
     python3 scripts/attack_simulator.py
@@ -16,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import secrets
 import sys
 from pathlib import Path
 
@@ -24,7 +23,7 @@ from web3 import Web3
 
 
 def main() -> int:
-    load_dotenv()
+    load_dotenv(".env")
 
     rpc = os.getenv("ALCHEMY_HTTP_RPC")
     attacker_key = os.getenv("ATTACKER_PRIVATE_KEY") or os.getenv("DEPLOYER_PRIVATE_KEY")
@@ -50,12 +49,15 @@ def main() -> int:
     print(f"pool:     {pool}")
     print()
 
-    # withdraw(uint256) selector = 0x2e1a7d4d. We pass an absurd amount so
-    # any humble depositor (0 balance) trips InsufficientBalance — which
-    # is fine, the *pending* tx is already what the agent reacts to.
-    selector = "0x2e1a7d4d"
-    amount_wei = w3.to_wei("9999", "ether")
-    calldata = selector + amount_wei.to_bytes(32, "big").hex()
+    # mint(address recipient, uint256 amount) selector = 0x40c10f19.
+    # We pass the attacker's address as the recipient and an absurd amount.
+    # The pool will revert (it has no mint()) but the *pending* tx already
+    # trips the agent's heuristics → Claude PAUSE band.
+    selector = "0x40c10f19"
+    recipient = attacker.address[2:].lower().rjust(64, "0")
+    amount_wei = w3.to_wei("1000000000", "ether")  # 1 billion ETH
+    amount_hex = amount_wei.to_bytes(32, "big").hex()
+    calldata = selector + recipient + amount_hex
 
     nonce = w3.eth.get_transaction_count(attacker.address)
     chain_id = w3.eth.chain_id
@@ -72,12 +74,13 @@ def main() -> int:
         "chainId": chain_id,
     }
     signed = attacker.sign_transaction(tx)
-    print("→ broadcasting attack tx (withdraw 9999 ETH from empty position)…")
+    print(f"-> broadcasting attack tx (mint 1,000,000,000 tokens to attacker)...")
+    print(f"   pattern: admin-key-compromise / infinite-mint signature")
     tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
     print(f"  tx_hash: {tx_hash.hex()}")
     print(f"  selector: {selector}  target: {pool}")
     print()
-    print("watch the agent log + dashboard — pause() should fire shortly.")
+    print("watch the agent log + dashboard - pause() should fire shortly.")
     return 0
 
 

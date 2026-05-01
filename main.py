@@ -111,6 +111,14 @@ async def run() -> int:
 
     await _publish_status()
 
+    # Heartbeat: refresh status.json every 10s so the dashboard's "live" pill
+    # stays accurate even when no events fire.
+    async def _heartbeat():
+        while True:
+            await asyncio.sleep(10)
+            await _publish_status()
+    asyncio.create_task(_heartbeat())
+
     async for tx in stream_pending(ws_url, watchlist):
         ok, reason = is_interesting(tx, watchlist)
         if not ok:
