@@ -203,6 +203,20 @@ confirm the codebase is sound without provisioning anything.
 
 ---
 
+## Future work
+
+- **Pluggable classifier.** The `AIAgent` class wraps Anthropic Claude
+  today; the same interface can host an Ollama-backed local model
+  (Llama 3, Qwen, Mistral) or any OpenAI-compatible endpoint. Trade-off
+  is JSON-output reliability versus operational sovereignty — operators
+  who can't depend on a hosted API can run the classifier themselves.
+- **Watchlist auto-discovery.** Rather than the operator hand-curating
+  protocol addresses, subscribe to DefiLlama's TVL feed and auto-watch
+  the top N pools.
+- **Operator runbooks.** When the agent fires `pause()`, also page the
+  operator with a generated post-mortem skeleton — what tripped, what
+  intel said, what to verify before unpausing.
+
 ## Author
 
 Built and led by [**Rivaldo Janneh**](https://github.com/janneh2000) — founder & lead dev.
